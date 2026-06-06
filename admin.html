@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ぷよクエ共通テスト 管理画面</title>
+
+<style>
+body{
+    font-family:"Yu Gothic",sans-serif;
+    background:#eef7ff;
+    margin:0;
+    padding:0;
+}
+
+.container{
+    max-width:850px;
+    margin:40px auto;
+    background:white;
+    padding:35px;
+    border-radius:16px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+}
+
+h1,h2{
+    text-align:center;
+    color:#2b7de9;
+}
+
+.info{
+    background:#f5fbff;
+    border:1px solid #d7ebff;
+    border-radius:10px;
+    padding:15px;
+    margin:20px 0;
+}
+
+label{
+    display:block;
+    margin-top:18px;
+    margin-bottom:6px;
+    font-weight:bold;
+}
+
+input,select,textarea{
+    width:100%;
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    box-sizing:border-box;
+    font-size:16px;
+}
+
+textarea{
+    min-height:120px;
+    font-family:"Yu Gothic",sans-serif;
+}
+
+button{
+    width:100%;
+    margin-top:18px;
+    padding:14px;
+    border:none;
+    border-radius:8px;
+    background:#4caf50;
+    color:white;
+    font-size:17px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#43a047;
+}
+
+.subButton{
+    background:#777;
+}
+
+.subButton:hover{
+    background:#666;
+}
+
+.danger{
+    background:#e53935;
+}
+
+.danger:hover{
+    background:#d32f2f;
+}
+
+.rowButtons{
+    display:flex;
+    gap:10px;
+}
+
+.rowButtons button{
+    flex:1;
+}
+
+.statGrid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:8px;
+}
+
+.statItem{
+    background:white;
+    border:1px solid #d7ebff;
+    border-radius:8px;
+    padding:10px;
+}
+
+.message{
+    text-align:center;
+    margin-top:15px;
+    font-weight:bold;
+    color:#e53935;
+}
+
+.small{
+    color:#666;
+    font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>ぷよクエ共通テスト 管理画面</h1>
+
+<div class="info">
+    <label>集計する回</label>
+    <input type="number" id="statsRound" value="3" min="1">
+
+    <button onclick="loadStats()">この回の登録数を確認</button>
+
+    <div id="statsArea" style="margin-top:15px;"></div>
+</div>
+
+<div class="info">
+    <label>
+        <input type="checkbox" id="unassignedOnly" onchange="applyFilter()" style="width:auto;">
+        未割り当て問題のみ表示
+    </label>
+
+    <label>問題ID または 行番号で移動</label>
+    <div style="display:flex; gap:10px;">
+        <input id="jumpId" placeholder="例：15 または ID">
+        <button onclick="jumpToQuestion()" style="margin-top:0;">移動</button>
+    </div>
+</div>
+
+<div class="info">
+    <strong id="counter">読み込み中...</strong>
+    <p class="small">IDがUUID形式の場合は長いID、またはスプレッドシートの行番号でも移動できます。</p>
+</div>
+
+<div class="info">
+    <p>投稿日時：<span id="date"></span></p>
+    <p>投稿者名：<span id="name"></span></p>
+    <p>ID：<span id="id"></span></p>
+    <p>行番号：<span id="row"></span></p>
+</div>
+
+<label>問題文</label>
+<textarea id="question"></textarea>
+
+<label>選択肢1</label>
+<input id="choice1">
+
+<label>選択肢2</label>
+<input id="choice2">
+
+<label>選択肢3</label>
+<input id="choice3">
+
+<label>選択肢4</label>
+<input id="choice4">
+
+<label>正解</label>
+<select id="answer">
+    <option value="1">①</option>
+    <option value="2">②</option>
+    <option value="3">③</option>
+    <option value="4">④</option>
+</select>
+
+<label>推定難易度</label>
+<select id="difficulty">
+    <option value="初級">初級</option>
+    <option value="中級">中級</option>
+    <option value="上級">上級</option>
+    <option value="超上級">超上級</option>
+</select>
+
+<label>確認状況</label>
+<select id="status">
+    <option value="未確認">未確認</option>
+    <option value="確認済み">確認済み</option>
+    <option value="保留">保留</option>
+    <option value="不採用">不採用</option>
+</select>
+
+<hr>
+
+<h2>追加先</h2>
+
+<label>回</label>
+<input type="number" id="round" min="1" placeholder="例：3">
+
+<label>カテゴリ</label>
+<select id="section">
+    <option value="">未割り当て</option>
+    <option value="初級">初級</option>
+    <option value="中級">中級</option>
+    <option value="上級">上級</option>
+    <option value="超上級">超上級</option>
+    <option value="管理者問題①">管理者問題①</option>
+    <option value="管理者問題②">管理者問題②</option>
+</select>
+
+<div class="rowButtons">
+    <button onclick="prevQuestion()" class="subButton">前へ</button>
+    <button onclick="saveAndNext()">保存して次へ</button>
+</div>
+
+<button onclick="nextQuestion()" class="subButton">スキップ</button>
+
+<div id="message" class="message"></div>
+
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyDLn3UccEHfvov-5wQ8X0IFgjZLPO7iHwniEB0zg0yH6ahLsRrZ1oTYduA8yF6dWIL/exec";
+
+let allQuestions = [];
+let questions = [];
+let currentIndex = 0;
+
+async function loadQuestions(){
+
+    document.getElementById("counter").innerText = "読み込み中...";
+
+    const res = await fetch(API_URL + "?action=getQuestions");
+    allQuestions = await res.json();
+
+    applyFilter();
+    loadStats();
+}
+
+function applyFilter(){
+
+    const only = document.getElementById("unassignedOnly").checked;
+
+    if(only){
+        questions = allQuestions.filter(q => {
+            return !q.round && !q.section;
+        });
+    }else{
+        questions = [...allQuestions];
+    }
+
+    currentIndex = 0;
+
+    if(questions.length === 0){
+        document.getElementById("counter").innerText = "表示できる問題がありません";
+        clearForm();
+        return;
+    }
+
+    showQuestion();
+}
+
+function clearForm(){
+    document.getElementById("date").innerText = "";
+    document.getElementById("name").innerText = "";
+    document.getElementById("id").innerText = "";
+    document.getElementById("row").innerText = "";
+
+    document.getElementById("question").value = "";
+    document.getElementById("choice1").value = "";
+    document.getElementById("choice2").value = "";
+    document.getElementById("choice3").value = "";
+    document.getElementById("choice4").value = "";
+
+    document.getElementById("answer").value = "1";
+    document.getElementById("difficulty").value = "初級";
+    document.getElementById("status").value = "未確認";
+    document.getElementById("round").value = "";
+    document.getElementById("section").value = "";
+}
+
+function showQuestion(){
+
+    const q = questions[currentIndex];
+
+    document.getElementById("counter").innerText =
+        `投稿問題 ${currentIndex + 1} / ${questions.length}`;
+
+    document.getElementById("date").innerText = q.date || "";
+    document.getElementById("name").innerText = q.name || "";
+    document.getElementById("id").innerText = q.id || "";
+    document.getElementById("row").innerText = q.row || "";
+
+    document.getElementById("question").value = q.question || "";
+    document.getElementById("choice1").value = q.choice1 || "";
+    document.getElementById("choice2").value = q.choice2 || "";
+    document.getElementById("choice3").value = q.choice3 || "";
+    document.getElementById("choice4").value = q.choice4 || "";
+
+    document.getElementById("answer").value = normalizeAnswer(q.answer);
+    document.getElementById("difficulty").value = q.difficulty || "初級";
+    document.getElementById("status").value = q.status || "未確認";
+
+    document.getElementById("round").value = q.round || "";
+    document.getElementById("section").value = q.section || "";
+
+    document.getElementById("message").innerText = "";
+
+    window.scrollTo(0,0);
+}
+
+async function saveAndNext(){
+
+    if(questions.length === 0){
+        return;
+    }
+
+    const q = questions[currentIndex];
+
+    const data = {
+        mode: "update",
+        row: q.row,
+        question: document.getElementById("question").value,
+        choice1: document.getElementById("choice1").value,
+        choice2: document.getElementById("choice2").value,
+        choice3: document.getElementById("choice3").value,
+        choice4: document.getElementById("choice4").value,
+        answer: document.getElementById("answer").value,
+        difficulty: document.getElementById("difficulty").value,
+        status: document.getElementById("status").value,
+        round: document.getElementById("round").value,
+        section: document.getElementById("section").value
+    };
+
+    document.getElementById("message").innerText = "保存中...";
+
+    await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify(data)
+    });
+
+    Object.assign(q, data);
+
+    const target = allQuestions.find(item => item.row === q.row);
+    if(target){
+        Object.assign(target, data);
+    }
+
+    document.getElementById("message").innerText = "保存しました";
+
+    await loadStats();
+
+    setTimeout(() => {
+        nextQuestion();
+    }, 400);
+}
+
+function nextQuestion(){
+
+    if(questions.length === 0){
+        return;
+    }
+
+    if(currentIndex < questions.length - 1){
+        currentIndex++;
+        showQuestion();
+    }else{
+        alert("最後の問題です");
+    }
+}
+
+function prevQuestion(){
+
+    if(questions.length === 0){
+        return;
+    }
+
+    if(currentIndex > 0){
+        currentIndex--;
+        showQuestion();
+    }else{
+        alert("最初の問題です");
+    }
+}
+
+async function jumpToQuestion(){
+
+    const id = document.getElementById("jumpId").value.trim();
+
+    if(id === ""){
+        alert("IDまたは行番号を入力してください");
+        return;
+    }
+
+    let index = questions.findIndex(q =>
+        String(q.id) === String(id) || String(q.row) === String(id)
+    );
+
+    if(index !== -1){
+        currentIndex = index;
+        showQuestion();
+        return;
+    }
+
+    const res = await fetch(API_URL + "?action=getQuestionById&id=" + encodeURIComponent(id));
+    const q = await res.json();
+
+    if(!q || !q.row){
+        alert("該当する問題が見つかりませんでした");
+        return;
+    }
+
+    const allIndex = allQuestions.findIndex(item => item.row === q.row);
+
+    if(allIndex !== -1){
+        document.getElementById("unassignedOnly").checked = false;
+        applyFilter();
+
+        const newIndex = questions.findIndex(item => item.row === q.row);
+
+        if(newIndex !== -1){
+            currentIndex = newIndex;
+            showQuestion();
+        }
+    }
+}
+
+function normalizeAnswer(answer){
+
+    const value = String(answer).trim();
+
+    if(value === "1" || value === "①") return "1";
+    if(value === "2" || value === "②") return "2";
+    if(value === "3" || value === "③") return "3";
+    if(value === "4" || value === "④") return "4";
+
+    return "1";
+}
+
+async function loadStats(){
+
+    const round = document.getElementById("statsRound").value || "";
+
+    const res = await fetch(API_URL + "?action=getStats&round=" + encodeURIComponent(round));
+    const stats = await res.json();
+
+    document.getElementById("statsArea").innerHTML = `
+        <div class="statGrid">
+            <div class="statItem">初級：${stats["初級"] || 0}問</div>
+            <div class="statItem">中級：${stats["中級"] || 0}問</div>
+            <div class="statItem">上級：${stats["上級"] || 0}問</div>
+            <div class="statItem">超上級：${stats["超上級"] || 0}問</div>
+            <div class="statItem">管理者問題①：${stats["管理者問題①"] || 0}問</div>
+            <div class="statItem">管理者問題②：${stats["管理者問題②"] || 0}問</div>
+        </div>
+        <h3>合計：${stats["合計"] || 0}問</h3>
+    `;
+}
+
+loadQuestions();
+</script>
+
+</body>
+</html>
